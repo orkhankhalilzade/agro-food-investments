@@ -65,6 +65,8 @@ COLUMNS: list[tuple[str, str, str]] = [
     ("total_cost", "Total cost", "calc"),
     # extra columns (needed so that every row is self-contained)
     ("tractors", "Number of tractors", "in"),
+    ("mulching", "Mulching", "in"), ("branch_shredding", "Branch shredding", "in"),
+    ("disk_freeze", "Disk freeze", "in"), ("tandem_disk", "Tandem disk", "in"),
     ("n_work_shift_h", "Norm: Work shift, hours", "norm"),
     ("n_round_up_tanks", "Norm: Tanks per Area (1 = round up, 0 = fraction)", "norm"),
     ("n_engine_factor", "Norm: Engine hours (including turns) factor", "norm"),
@@ -119,7 +121,7 @@ def _input_values(cfg: core.Config, op: dict) -> dict:
          "n_engine_factor": n["engine_factor"], "n_diesel_cost": n["diesel_cost"],
          "n_lubricant_cost": n["lubricant_cost"]}
     for cat in core.CATEGORIES:
-        v[cat] = op["products"].get(cat) or None
+         v[cat] = "\n\n".join(op["products"].get(cat) or []) or None
     for k in core.NUMERIC_INPUTS:
         v[k] = i.get(k)
     return v
