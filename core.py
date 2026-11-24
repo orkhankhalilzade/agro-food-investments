@@ -29,7 +29,8 @@ STAGES = ["Dormancy", "Bud Swelling", "Flowering", "Fruit Development",
           "Ripening and Harvest", "Harvest", "Harvest and Dormancy"]
 MONTHS = ["January", "February", "March", "April", "May", "June", "July",
           "August", "September", "October", "November", "December"]
-CATEGORIES = ["pests", "diseases", "nutrition", "regulators", "adjuvant", "herbicide"]
+CATEGORIES = ["pests", "diseases", "nutrition", "regulators", "adjuvant", "herbicide",
+              "mulching", "branch_shredding", "disk_freeze", "tandem_disk"]
 
 # Manual inputs stored per operation (informational ones included).
 NUMERIC_INPUTS = ["solution_per_ha", "row_length", "rows", "max_duration", "tractors", "speed",
@@ -38,7 +39,8 @@ NUMERIC_INPUTS = ["solution_per_ha", "row_length", "rows", "max_duration", "trac
                   "salary_per_hour"]
 TEXT_INPUTS = ["tractor"]
 NORM_FIELDS = ["work_shift_h", "round_up_tanks", "engine_factor", "diesel_cost", "lubricant_cost"]
-SAVE_VERSION = 1
+SAVE_VERSION = 2
+SUPPORTED_VERSIONS = (1, 2)
 
 
 # --------------------------------------------------------------------------- config
@@ -168,6 +170,17 @@ def summarize(cfg: Config, operations: list[dict]) -> dict[str, Any]:
 
 
 # --------------------------------------------------------------------------- validation
+def _clean_processes(v, name: str) -> list[str]:
+    """Products of one category -> list of non-empty process texts (v1 files store one str)."""
+    if v is None:
+        return []
+    if isinstance(v, str):
+        v = [v]
+    if not isinstance(v, list) or not all(isinstance(x, str) for x in v):
+        raise ValueError(f"'{name}' must be a list of texts")
+    return [t.strip() for t in v if t.strip()]
+
+
 def _num_or_none(v, name: str, integer: bool = False):
     if v is None:
         return None
@@ -201,7 +214,7 @@ def validate_operation(cfg: Config, op: dict) -> dict:
     cleaned = {
         "id": str(op.get("id") or new_id()), "company": op["company"], "orchard": orchard,
         "stage": op["stage"], "month": op["month"], "week": week, "pt": pt,
-        "products": {c: str(products.get(c) or "") for c in CATEGORIES},
+        "products": {c: _clean_processes(products.get(c), c) for c in CATEGORIES},
         "inputs": {k: _num_or_none(inputs_in.get(k), k, integer=(k in ("rows", "tractors")))
                    for k in NUMERIC_INPUTS},
         "norms": {},
@@ -247,7 +260,7 @@ def load_state(cfg: Config, data: bytes) -> dict[str, Any]:
         raise ValueError(f"Not a valid saved file: {e}") from e
     if not isinstance(payload, dict) or payload.get("app") != "Agro Food Investment":
         raise ValueError("This file was not created by Agro Food Investment")
-    if payload.get("version") != SAVE_VERSION:
+    if payload.get("version") not in SUPPORTED_VERSIONS:
         raise ValueError(f"Unsupported file version: {payload.get('version')!r}")
     ops = []
     seen = set()
