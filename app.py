@@ -18,7 +18,10 @@ import export_xlsx
 from calc import Norms, OperationInputs, calculate, missing_inputs
 from i18n import LANGS, input_label, month_label, stage_label, tr
 
-st.set_page_config(page_title="Agro Food Investment", page_icon="🌿", layout="wide")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+FAVICON_PATH = os.path.join(BASE_DIR, "favicon.ico")
+
+st.set_page_config(page_title="Agro Food Investment", page_icon=FAVICON_PATH, layout="wide")
 
 ALL = "__all__"
 NONE_ORCHARD = "__none__"
@@ -220,9 +223,34 @@ def cb_reset():
     ss.edit_id = None
 
 
-def cb_suggest(pkey: str, skey: str):
+def _rows(base: str) -> list[str]:
+    """Texts of the process rows of one category/orchard/week (keys p_{base}_0, _1, ...)."""
+    out = []
+    while f"p_{base}_{len(out)}" in ss:
+        out.append(ss[f"p_{base}_{len(out)}"])
+    return out
+
+
+def cb_proc_add(base: str):
+    ss[f"p_{base}_{len(_rows(base))}"] = ""
+
+
+def cb_proc_del(base: str, i: int):
+    rows = _rows(base)
+    if len(rows) <= 1:
+        return
+    for k in range(i, len(rows) - 1):
+        ss[f"p_{base}_{k}"] = rows[k + 1]
+    del ss[f"p_{base}_{len(rows) - 1}"]
+
+
+def cb_suggest(base: str, skey: str):
     if ss.get(skey):
-        ss[pkey] = ss[skey]
+        rows = _rows(base)
+        if not rows or rows[-1].strip():
+            ss[f"p_{base}_{len(rows)}"] = ss[skey]      # yeni proses kimi
+        else:
+            ss[f"p_{base}_{len(rows) - 1}"] = ss[skey]  # boş son sətri doldur
     ss[skey] = ""
 
 
@@ -236,7 +264,7 @@ def form_op_dict(pt: str) -> dict:
     inputs = {n: ss.get(f"i_{n}") for n in core.NUMERIC_INPUTS}
     inputs["tractor"] = (ss.get("i_tractor") or "").strip()
     okey = ss.f_orchard if ss.f_orchard else "x"
-    products = {c: ss.get(f"p_{c}_{okey}_{ss.f_week}", "") for c in core.CATEGORIES}
+    products = {c: _rows(f"{c}_{okey}_{ss.f_week}") for c in core.CATEGORIES}
     return {"company": company, "orchard": orchard, "stage": ss.f_stage, "month": ss.f_month,
             "week": ss.f_week if ss.f_week != "" else None, "pt": pt,
             "products": products, "inputs": inputs, "norms": current_norms()}
@@ -285,8 +313,10 @@ def cb_edit(op_id: str):
     ss["i_tractor"] = op["inputs"].get("tractor", "")
     for k in [k for k in ss.keys() if k.startswith(("p_", "s_"))]:
         del ss[k]
-    for c, txt in op["products"].items():
-        ss[f"p_{c}_{ss.f_orchard}_{op['week']}"] = txt
+    okey = ss.f_orchard or "x"
+    for c, procs in op["products"].items():
+        for i, txt in enumerate(procs or [""]):
+            ss[f"p_{c}_{okey}_{op['week']}_{i}"] = txt
     ss.edit_id = op_id
     ss.flash = ("info", T("editing", pt=op["pt"]))
 
@@ -549,20 +579,28 @@ def render_products():
     for i in range(0, len(cats), 2):
         cols = st.columns(2)
         for col, cat in zip(cols, cats[i:i + 2]):
-            pkey, skey = f"p_{cat}_{okey}_{week}", f"s_{cat}_{okey}_{week}"
-            if ready and pkey not in ss:
-                ss[pkey] = "\n".join(CFG.program(company, orch_value(orchard), week).get(cat, []))
+            base, skey = f"{cat}_{okey}_{week}", f"s_{cat}_{okey}_{week}"
+            if ready and f"p_{base}_0" not in ss:
+                ss[f"p_{base}_0"] = "\n".join(CFG.program(company, orch_value(orchard), week).get(cat, []))
             elif not ready:
-                ss.setdefault(pkey, "")
+                ss.setdefault(f"p_{base}_0", "")
+            n = len(_rows(base))
             with col:
-                st.text_area(T(cat), key=pkey, height=88, disabled=not ready)
+                for r in range(n):
+                    st.text_area(T(cat) if r == 0 else f"{T(cat)} {r + 1}", key=f"p_{base}_{r}",
+                                 height=88, disabled=not ready)
+                    if n > 1:
+                        st.button(T("remove_process"), key=f"prem_{base}_{r}", icon=":material/remove:",
+                                  on_click=cb_proc_del, args=(base, r), disabled=not ready)
+                st.button(T("add_process"), key=f"padd_{base}", icon=":material/add:",
+                          on_click=cb_proc_add, args=(base,), disabled=not ready)
                 if ready:
                     sugg = CFG.suggestions(company, orch_value(orchard), cat)
                     if sugg:
                         ss.setdefault(skey, "")
                         st.selectbox(T("suggest"), [""] + sugg, key=skey, label_visibility="collapsed",
                                      format_func=lambda v: T("suggest") + " …" if v == "" else " | ".join(v.split("\n"))[:60],
-                                     on_change=cb_suggest, args=(pkey, skey))
+                                     on_change=cb_suggest, args=(base, skey))
 
 
 def render_block3():
