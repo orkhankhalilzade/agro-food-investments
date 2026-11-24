@@ -31,6 +31,8 @@ COLUMNS: list[tuple[str, str, str]] = [
     ("nutrition", "Macro- and Micronutrient Feeding", "in"),
     ("regulators", "Plant Regulators (acids, hormones, sun protection)", "in"),
     ("adjuvant", "Adjuvant / pH Corrector", "in"), ("herbicide", "Herbicide", "in"),
+    ("mulching", "Mulching", "in"), ("branch_shredding", "Branch shredding", "in"),
+    ("disk_freeze", "Disk freeze", "in"), ("tandem_disk", "Tandem disk", "in"),
     ("pt", "operations", "in"), ("solution_per_ha", "Spraying Solution per ha", "in"),
     ("row_length", "Average row length, m", "in"), ("rows", "Rows", "in"),
     ("max_duration", "Max duration operation time, days", "in"), ("tractor", "Tractor", "in"),
@@ -65,8 +67,6 @@ COLUMNS: list[tuple[str, str, str]] = [
     ("total_cost", "Total cost", "calc"),
     # extra columns (needed so that every row is self-contained)
     ("tractors", "Number of tractors", "in"),
-    ("mulching", "Mulching", "in"), ("branch_shredding", "Branch shredding", "in"),
-    ("disk_freeze", "Disk freeze", "in"), ("tandem_disk", "Tandem disk", "in"),
     ("n_work_shift_h", "Norm: Work shift, hours", "norm"),
     ("n_round_up_tanks", "Norm: Tanks per Area (1 = round up, 0 = fraction)", "norm"),
     ("n_engine_factor", "Norm: Engine hours (including turns) factor", "norm"),
