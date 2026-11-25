@@ -171,6 +171,10 @@ def init_state():
     ss.setdefault("i_tractors", 1)
     ss.setdefault("norms", {c: core.default_norms() for c in core.COMPANIES + [""]})
     ss.setdefault("norm_company", "")
+    for c in core.COMPANIES + [""]:
+        ss.norms.setdefault(c, core.default_norms())
+    if ss.f_company not in core.COMPANIES + [""]:
+        ss.f_company = ""
     for f, v in core.default_norms().items():
         ss.setdefault(norm_key(f), _norm_value(f, v))
     for k in ("wf_company", "wf_orchard", "wf_month", "wf_week", "wf_op"):
